@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Remote Lock</string>
+    <string name="title_activity_get_access_key">GetAccessKeyActivity</string>
+</resources>
