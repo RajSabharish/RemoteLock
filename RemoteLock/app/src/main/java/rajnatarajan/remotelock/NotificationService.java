@@ -1,8 +1,8 @@
 package rajnatarajan.remotelock;
 
+import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
-import android.app.ProgressDialog;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
@@ -10,13 +10,10 @@ import android.content.SharedPreferences;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.AsyncTask;
-import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
-import android.os.Looper;
 import android.preference.PreferenceManager;
 import android.support.annotation.Nullable;
-import android.support.annotation.StringDef;
 import android.support.v4.app.NotificationCompat;
 import android.widget.Toast;
 
@@ -40,15 +37,18 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 /**
- * Created by Sabarish on 17-08-2017.
+ * Created by RajSabharish on 17-08-2017.
  */
 
 public class NotificationService extends Service {
 
     String returnvalue;
-    public static final long NOTIFY_INTERVAL = 120 * 1000; // 10 seconds
-    private Handler mHandler = new Handler();
-    private Timer mTimer = null;
+    public static final long NOTIFY_INTERVAL_CHECK_IDLE = 120 * 1000; // 2 minutes
+    public static final long NOTIFY_INTERVAL_CHECK_WEEKEND = 60 * 1000; // 30 minutes
+    private Handler idleHandler = new Handler();
+    private Handler weekendHandler = new Handler();
+    private Timer idleTimer = null;
+    private Timer weekendTimer = null;
 
     @Nullable
     @Override
@@ -59,21 +59,30 @@ public class NotificationService extends Service {
     @Override
     public void onCreate() {
         // cancel if already existed
-        if(mTimer != null) {
-            mTimer.cancel();
+        if(idleTimer != null) {
+            idleTimer.cancel();
         } else {
             // recreate new
-            mTimer = new Timer();
+            idleTimer = new Timer();
         }
         // schedule task
-        mTimer.scheduleAtFixedRate(new TimeDisplayTimerTask(), 0, NOTIFY_INTERVAL);
+        idleTimer.scheduleAtFixedRate(new checkIdleTimerTask(), 0, NOTIFY_INTERVAL_CHECK_IDLE);
+
+        if(weekendTimer != null) {
+            weekendTimer.cancel();
+        } else {
+            // recreate new
+            weekendTimer = new Timer();
+        }
+
+        weekendTimer.scheduleAtFixedRate(new checkWeekendStatusTask(), 0, NOTIFY_INTERVAL_CHECK_WEEKEND);
     }
 
-    class TimeDisplayTimerTask extends TimerTask {
+    class checkIdleTimerTask extends TimerTask {
         @Override
         public void run() {
             // run on another thread
-            mHandler.post(new Runnable() {
+            idleHandler.post(new Runnable() {
 
                 @Override
                 public void run() {
@@ -92,9 +101,11 @@ public class NotificationService extends Service {
                                         PendingIntent pendingIntent = PendingIntent.getActivity(NotificationService.this, 0, notificattionIntent, PendingIntent.FLAG_UPDATE_CURRENT);
                                         NotificationCompat.Builder mBuilder =
                                                 new NotificationCompat.Builder(NotificationService.this)
+                                                        .setPriority(NotificationCompat.PRIORITY_MAX)
+                                                        .setDefaults(Notification.DEFAULT_ALL)
                                                         .setSmallIcon(R.drawable.notification_lock)
                                                         .setContentTitle("Remote Lock")
-                                                        .setContentText("Device idle")
+                                                        .setContentText("Device idle. Tap for Actions.")
                                                         .setContentIntent(pendingIntent);
                                         NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
                                         notificationManager.notify(1, mBuilder.build());
@@ -106,7 +117,7 @@ public class NotificationService extends Service {
                                     }
                                 }
                             };
-                            task.execute(accessKey);
+                            task.execute(accessKey,"idle");
                         } else {
                             System.out.println("Access Key is null from Shared Preferences");
                         }
@@ -118,6 +129,64 @@ public class NotificationService extends Service {
 
                     // Let it continue running until it is stopped.
                    // Toast.makeText(this, "Service Started", Toast.LENGTH_LONG).show();
+                    //return START_STICKY;
+                }
+
+            });
+        }
+    }
+
+    class checkWeekendStatusTask extends TimerTask {
+        @Override
+        public void run() {
+            // run on another thread
+            weekendHandler.post(new Runnable() {
+
+                @Override
+                public void run() {
+                    SharedPreferences myPreferences
+                            = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+                    System.out.println("Executing&&&&&&&&&&");
+                    if (myPreferences.contains("AccessKey")) {
+                        final String accessKey = myPreferences.getString("AccessKey", null);
+                        if (accessKey != null) {
+                            NotificationService.checksstatus task = new NotificationService.checksstatus() {
+                                protected void onPostExecute(String result) {
+                                    System.out.println(result);
+                                    returnvalue = result;
+                                    if (returnvalue.equals("1")) {
+                                        final Intent notificationIntent = new Intent(getApplicationContext(), WeekendActivity.class);
+                                        PendingIntent pendingIntent = PendingIntent.getActivity(NotificationService.this, 0, notificationIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+                                        NotificationCompat.Builder mBuilder =
+                                                new NotificationCompat.Builder(NotificationService.this)
+                                                        .setPriority(NotificationCompat.PRIORITY_MAX)
+                                                        .setDefaults(Notification.DEFAULT_ALL)
+                                                        .setSmallIcon(R.drawable.notification_lock)
+                                                        .setContentTitle("Remote Lock")
+                                                        .setContentText("Turn off the System over weekend and save power. Tap for options.")
+                                                        .setContentIntent(pendingIntent);
+                                        NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+                                        notificationManager.notify(1, mBuilder.build());
+                                    } else if (returnvalue.equals("0")) {
+                                        System.out.println("The Access Key stored is not valid anymore");
+
+                                    } else if (returnvalue.equals("2")) {
+                                        System.out.println("No network connection available");
+                                    }
+                                }
+                            };
+                            task.execute(accessKey,"weekend");
+                        } else {
+                            System.out.println("Access Key is null from Shared Preferences");
+                        }
+
+                    } else {
+                        stopService(new Intent(getBaseContext(), NotificationService.class));
+                        // Toast.makeText(this, "Service Stoped", Toast.LENGTH_LONG).show();
+                    }
+
+                    // Let it continue running until it is stopped.
+                    // Toast.makeText(this, "Service Started", Toast.LENGTH_LONG).show();
                     //return START_STICKY;
                 }
 
@@ -169,12 +238,27 @@ public class NotificationService extends Service {
                             JSONObject json_data = new JSONObject(result);
                             int success = json_data.getInt("success");
                             String idle = json_data.getString("idletime");
-                            if (success == 1&&idle.equals("1")) {
-                                System.out.println("Device connected");
-                                return_result = "1";
-                            } else {
-                                System.out.println("No device found");
-                                return_result = "0";
+                            String weekend = json_data.getString("weekendstatus");
+                            if(args[1].equals("idle")) {
+                                if (success == 1 && idle.equals("1")) {
+                                    System.out.println("Device connected");
+                                    return_result = "1";
+                                } else {
+                                    System.out.println("No device found / System not idle");
+                                    return_result = "0";
+                                }
+                            }
+                            else if(args[1].equals("weekend"))
+                            {
+                                if(success == 1 && weekend.equals("1")) {
+                                    System.out.println("Device connected");
+                                    return_result = "1";
+                                }
+                                else
+                                {
+                                    System.out.println("No Device Found / Weekend status negative");
+                                    return_result = "0";
+                                }
                             }
 
                         }

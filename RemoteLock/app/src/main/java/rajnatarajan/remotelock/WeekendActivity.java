@@ -1,5 +1,6 @@
 package rajnatarajan.remotelock;
 
+import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.ProgressDialog;
@@ -13,7 +14,6 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
-import android.widget.ImageButton;
 import android.widget.Toast;
 
 import org.apache.http.HttpResponse;
@@ -33,49 +33,84 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 
-public class IdleLockActivity extends AppCompatActivity {
+public class WeekendActivity extends AppCompatActivity {
 
-    private ProgressDialog pDialog;
     String accessKey,returnvalue;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_idle_lock);
-        Button lockbutton = (Button) findViewById(R.id.lockButton);
+        setContentView(R.layout.activity_weekend);
+        Button shutDownbutton = (Button) findViewById(R.id.shutDownButton);
         Button cancelbutton = (Button) findViewById(R.id.cancelButton);
         cancelbutton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                finish();
-            }
-        });
-        lockbutton.setOnClickListener(new View.OnClickListener(){
-            @Override
-            public void onClick(View v) {
                 SharedPreferences myPreferences
-                        = PreferenceManager.getDefaultSharedPreferences(IdleLockActivity.this);
+                        = PreferenceManager.getDefaultSharedPreferences(WeekendActivity.this);
                 if (myPreferences.contains("AccessKey") && myPreferences.getString("AccessKey", null) != null) {
                     accessKey=myPreferences.getString("AccessKey", null);
-                    IdleLockActivity.updatestatus task = new IdleLockActivity.updatestatus() {
+                    WeekendActivity.updatestatus task = new WeekendActivity.updatestatus() {
                         protected void onPostExecute(String result) {
                             System.out.println(result);
-                            pDialog.dismiss();
                             returnvalue = result;
                             if (returnvalue.equals("1")) {
-                                Toast.makeText(IdleLockActivity.this, "Lock device command sent", Toast.LENGTH_LONG).show();
+                                Toast.makeText(WeekendActivity.this, "Weekend reminder canceled", Toast.LENGTH_LONG).show();
                             } else if (returnvalue.equals("0")) {
-                                Toast.makeText(IdleLockActivity.this, "Device not found", Toast.LENGTH_LONG).show();
-                                Intent i = new Intent(IdleLockActivity.this, MainActivity.class);
+                                Toast.makeText(WeekendActivity.this, "Device not found", Toast.LENGTH_LONG).show();
+                                Intent i = new Intent(WeekendActivity.this, MainActivity.class);
                                 finishAffinity();
                                 startActivity(i);
                             }
                         }
                     };
-                    task.execute(accessKey, "lockidle");
+                    task.execute(accessKey, "resetweekend");
                 }
                 else{
                     System.out.println("Invalid Access Key");
                 }
+                finish();
+            }
+        });
+        shutDownbutton.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View v) {
+                SharedPreferences myPreferences
+                        = PreferenceManager.getDefaultSharedPreferences(WeekendActivity.this);
+                if (myPreferences.contains("AccessKey") && myPreferences.getString("AccessKey", null) != null) {
+                    accessKey=myPreferences.getString("AccessKey", null);
+                    WeekendActivity.updatestatus task = new WeekendActivity.updatestatus() {
+                        protected void onPostExecute(String result) {
+                            System.out.println(result);
+                            returnvalue = result;
+                            if (returnvalue.equals("1")) {
+                                Toast.makeText(WeekendActivity.this, "Shut Down device command sent", Toast.LENGTH_LONG).show();
+                            } else if (returnvalue.equals("0")) {
+                                Toast.makeText(WeekendActivity.this, "Device not found", Toast.LENGTH_LONG).show();
+                                Intent i = new Intent(WeekendActivity.this, MainActivity.class);
+                                finishAffinity();
+                                startActivity(i);
+                            }
+                        }
+                    };
+                    task.execute(accessKey, "weekend");
+                }
+                else{
+                    System.out.println("Invalid Access Key");
+                }
+                final Intent emptyIntent = new Intent();
+                PendingIntent pendingIntent = PendingIntent.getActivity(WeekendActivity.this, 0, emptyIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+                NotificationCompat.Builder mBuilder =
+                        new NotificationCompat.Builder(WeekendActivity.this)
+                                .setPriority(NotificationCompat.PRIORITY_MAX)
+                                .setDefaults(Notification.DEFAULT_ALL)
+                                .setSmallIcon(R.drawable.notification_lock)
+                                .setContentTitle("Remote Lock")
+                                .setContentText("Shutdown command sent to device!")
+                                .setContentIntent(pendingIntent);
+                NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+                notificationManager.notify(1, mBuilder.build());
+                finish();
             }
         });
     }
@@ -83,15 +118,6 @@ public class IdleLockActivity extends AppCompatActivity {
     class updatestatus extends AsyncTask<String, String, String> {
         String return_result;
 
-        @Override
-        protected void onPreExecute() {
-            super.onPreExecute();
-            pDialog = new ProgressDialog(IdleLockActivity.this);
-            pDialog.setMessage("Wait...");
-            pDialog.setIndeterminate(false);
-            pDialog.setCancelable(true);
-            pDialog.show();
-        }
 
         @Override
         protected String doInBackground(String... args) {

@@ -1,5 +1,6 @@
 package rajnatarajan.remotelock;
 
+import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.ProgressDialog;
@@ -68,6 +69,8 @@ public class LockActivity extends AppCompatActivity {
                 PendingIntent pendingIntent = PendingIntent.getActivity(LockActivity.this, 0, emptyIntent, PendingIntent.FLAG_UPDATE_CURRENT);
                 NotificationCompat.Builder mBuilder =
                         new NotificationCompat.Builder(LockActivity.this)
+                                .setPriority(NotificationCompat.PRIORITY_MAX)
+                                .setDefaults(Notification.DEFAULT_ALL)
                                 .setSmallIcon(R.drawable.notification_lock)
                                 .setContentTitle("Remote Lock")
                                 .setContentText("Device Lock command sent!")
@@ -103,6 +106,8 @@ public class LockActivity extends AppCompatActivity {
                 PendingIntent pendingIntent = PendingIntent.getActivity(LockActivity.this, 0, emptyIntent, PendingIntent.FLAG_UPDATE_CURRENT);
                 NotificationCompat.Builder mBuilder =
                         new NotificationCompat.Builder(LockActivity.this)
+                                .setPriority(NotificationCompat.PRIORITY_MAX)
+                                .setDefaults(Notification.DEFAULT_ALL)
                                 .setSmallIcon(R.drawable.notification_lock)
                                 .setContentTitle("Remote Lock")
                                 .setContentText("Device shutdown command sent!")
@@ -138,6 +143,8 @@ public class LockActivity extends AppCompatActivity {
                 PendingIntent pendingIntent = PendingIntent.getActivity(LockActivity.this, 0, emptyIntent, PendingIntent.FLAG_UPDATE_CURRENT);
                 NotificationCompat.Builder mBuilder =
                         new NotificationCompat.Builder(LockActivity.this)
+                                .setPriority(NotificationCompat.PRIORITY_MAX)
+                                .setDefaults(Notification.DEFAULT_ALL)
                                 .setSmallIcon(R.drawable.notification_lock)
                                 .setContentTitle("Remote Lock")
                                 .setContentText("Device Sleep command sent!")
